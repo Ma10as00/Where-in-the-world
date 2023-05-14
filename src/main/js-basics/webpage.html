@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Testing JS</title>
+
+</head>
+<body>
+    <h1>Find location</h1>
+    <p>You can find a location on a map by writing it's coordinates in the textbox below.
+        There is also a button to show you the current time.
+    </p>
+    <p></p>
+    <button onclick="createFile()">Write geoJSON-file</button>
+    <button onclick="posAlert()">Display current geoJSON data</button>
+    <p></p>
+    <input type="text" id="textInput">
+    <button onclick="readText()">OK</button>
+    <p></p>
+    <button onclick="displayDate()">Display current time</button>
+    <p id="time"></p>
+    <p></p>
+    <button onclick="window.print()">Print this page</button>
+    <script src="script.js"> </script>
+</body>
+</html>
