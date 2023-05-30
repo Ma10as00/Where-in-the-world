@@ -11,7 +11,7 @@ function Position(latitude, longitude, name = ""){
     this.type = "Feature";
     this.geometry = {
         type: "Point",
-        coordinates: [latitude, longitude]
+        coordinates: [longitude, latitude]
     };
     this.properties = {
         name: name
@@ -91,80 +91,107 @@ function createTextProcesser(input){
         /** The place name. An empty string by default. */
         name: '',
 
+        /* Creates a Position based on this processor's current data. */
+        createPos: function(){
+            //format numbers into 6 digits after decimal point:
+            this.latitude = this.latitude.toFixed(6);
+            this.longitude = this.longitude.toFixed(6);
+            return new Position(this.latitude, this.longitude, this.name);
+        },
+
         /** Splits the text-input by the separator ',' and returns the components in an array */
         getComponents: function(){
-            return this.text.split(','); 
+            const separators = /[, ]+/;  //Seperate by commas and spaces
+            return this.text.split(separators); 
         },
 
         /** Checks if the input text is entirely numeric, except for spaces ' ' and commas ','.*/
-        isNumeric: function(){
-            let isNum = true;
-            //Split string into components
-            let parts = this.getComponents();
-            for(let i = 0; i < parts.length; i++){
-                const part = parts[i];
-                //Check if each part is numeric
-                isNum = (!isNaN(part) && !isNaN(parseFloat(part)));
-                if (!isNum){
-                    break; //Found non-numeric part
-                }
-            }
-            return isNum;
-        },
-
-        /* Creates a Position based on this processor's current data. */
-        createPos: function(){
-            return new Position(this.latitude, this.longitude, this.name);
+        isNumeric: function(part){
+            return (!isNaN(part) && !isNaN(parseFloat(part)));
         },
 
         /** Creates a geoJSON position out of the processed text input. */
         read: function(){
             let parts = this.getComponents();
+            console.log(parts);
+            let interpreter = '';               //Will say have values '', 'N', 'E', 'W' or 'S'.
+            let registeredNumber = undefined;   //To get the order of the coordinates right
+            let registeredNumbers = 0;
 
-            if (this.isNumeric(this.text)){
-                console.log('input was numeric');
-                if (parts.length == 2){
-                    this.latitude = parts[0];
-                    this.longitude = parts[1];
-                }else{
-                    console.error("Too many numbers in this string. Can't create Position.");
-                }
-            }else{
-                console.log('input was not numeric');
-                console.log(parts);
-                for(let i = 0; i < parts.length; i++){
-                    let part = parts[i];
-                    if(i<2){
-                        let [value, direction] = part.split(' ');
-                        value = parseFloat(value);
-                        switch (direction) {
-                            case 'N':
-                                this.latitude = value;
-                                break;
-                            case 'E':
-                                this.longitude = value;
-                                break;
-                            case 'W':
-                                this.longitude = -value;
-                                break;
-                            case 'S':
-                                this.latitude = -value;
-                                break;
-                            default:
-                                if(i == 0){
-                                    this.latitude = value;
-                                }
-                                if(i==1){
-                                    this.longitude = value;
-                                }
-                                break;
+            for(let i = 0; i < parts.length; i++){
+                let part = parts[parts.length - 1 - i]; //Go backwards through input
+                switch (part) {
+                    //If part is NEWS, change interpreter and resolve registered number
+                    case 'N':
+                        interpreter = 'N';
+                        if(registeredNumbers == 1){
+                            this.longitude = registeredNumber;  //The other number must be longitude
+                            registeredNumbers++;
                         }
-                    }
-                    //Name
-                    if(i == 2){
-                        this.name = part;
-                    }
-                    //Ignore the rest of the input
+                        break;
+                    case 'E':
+                        interpreter = 'E';
+                        if(registeredNumbers == 1){
+                            this.latitude = registeredNumber;  //The other number must be latitude
+                            registeredNumbers++;
+                        }
+                        break;
+                    case 'W':
+                        interpreter = 'W';
+                        if(registeredNumbers == 1){
+                            this.latitude = registeredNumber;  //The other number must be latitude
+                            registeredNumbers++;
+                        }
+                        break;
+                    case 'S':
+                        interpreter = 'S';
+                        if(registeredNumbers == 1){
+                            this.longitude = registeredNumber;  //The other number must be longitude
+                            registeredNumbers++;
+                        }
+                        break;
+                    default:
+                        //Part was not NEWS
+                        //If part is numeric, interpret number and reset interpreter
+                        if(this.isNumeric(part)){
+                            //parse part as a number
+                            part = parseFloat(part);
+                            switch (interpreter) {
+                                case 'N':
+                                    this.latitude = part;
+                                    interpreter = '';
+                                    break;
+                                case 'E':
+                                    this.longitude = part;
+                                    interpreter = '';
+                                    break;
+                                case 'W':
+                                    this.longitude = -part;
+                                    interpreter = '';
+                                    break;
+                                case 'S':
+                                    this.latitude = -part;
+                                    interpreter = '';
+                                    break;
+                                default:
+                                    //interpreter is empty
+                                    //If we already have registered a number
+                                    if(registeredNumbers == 1){
+                                        this.longitude = registeredNumber;
+                                        this.latitude = part;
+                                        //All numbers registered after this will be ignored:
+                                        registeredNumbers++;
+                                    }else if(registeredNumbers == 0){
+                                        registeredNumber = part;                                        
+                                        registeredNumbers++;
+                                    }
+                                    break;
+                            }
+                        }
+                        else{   //Part is not NEWS, nor number.
+                            this.name = part;   //Assume this is the name
+                        }
+                        break;
                 }
             }
         }
