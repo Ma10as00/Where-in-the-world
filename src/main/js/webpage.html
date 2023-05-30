@@ -13,16 +13,19 @@
         <p></p> The expectation is that each line should consist of a coordinate (in some form), optionally followed by a label.
         <p></p> For instance:  45.9 S, 170.5 E Dunedin
         <p></p> To display your locations on a map, click on 'Go to map'.
+        <p></p> To export collected geoJSON data to a .txt file, click 'Export'.
+        <p></p> To clear all geoJSON data, and start over, click 'Clear'.
     </p>
     <p></p>
     <input type="text" id="textInput">
     <button onclick="readText()">OK</button>
+    <button onclick="openMap()">Go to map</button>
+    <button onclick="createFile()">Export</button>
+    <button onclick="clearData()">Clear</button>
+    <p></p>
+    <p id = "positions"></p>
     <p></p>
     <p id = "geoJSON"></p>
-    <p></p>
-    <button onclick="openMap()">Go to map</button>
-    <p></p>
-    <button onclick="createFile()">Export to .txt file</button>
     <p></p>
     <button onclick="window.print()">Print this page</button>
     <script src="script.js"> </script>

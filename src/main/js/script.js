@@ -23,13 +23,30 @@ function Position(latitude, longitude, name = ""){
 }
 
 /** Returns the string of all the geoJSON-data in positions */
-function posStr(){
+function JSONstr(){
     return JSON.stringify(positions, null, 2);
+}
+
+function posStr(){
+    let str = '';
+    for (let i = 0; i < positions.features.length; i++){
+        const position = positions.features[i];
+        let longitude = position.geometry.coordinates[0];
+        let latitude = position.geometry.coordinates[1];
+        const name = position.properties.name;
+
+        //Format numbers to have 6 digits after decimal point:
+        longitude = longitude.toFixed(6);
+        latitude = latitude.toFixed(6);
+
+        str += latitude + ', ' + longitude + ' ' + name + '\n';
+    }
+    return str;
 }
 
 /**Function to create the new geoJSON-file. */ 
 function createFile() {
-    const fileContent = posStr();
+    const fileContent = JSONstr();
     const fileName = 'geoJSON.txt';
     const blob = new Blob([fileContent], {type: 'text/plain'});
     const url = URL.createObjectURL(blob);
@@ -51,9 +68,24 @@ input.addEventListener('keydown', function(event){
 });
 
 const displayedJSON = document.getElementById("geoJSON");
+updateDisplayedJSON();  //Initialize the display of geoJSON data
+const displayedPositions = document.getElementById("positions");
 
 function updateDisplayedJSON(){
-    displayedJSON.innerHTML = '<pre>' + posStr() + '</pre>';    //The <pre> is to keep the formatting nice on the html-page
+    displayedJSON.innerHTML = '<pre>' + 'geoJSON data:\n' + JSONstr() + '</pre>';    //The <pre> is to keep the formatting nice on the html-page
+}
+
+function updateDisplayedPos(){
+    displayedPositions.innerHTML = '<pre>' + posStr() + '</pre>';    //The <pre> is to keep the formatting nice on the html-page
+}
+
+/* Clears all data in positions and updates the graphics accordingly. */
+function clearData(){
+    //Empty positions
+    positions.features = [];
+    //Update displayed data
+    updateDisplayedJSON();
+    updateDisplayedPos();
 }
 
 /** The function that processes the text input from the user.
@@ -64,16 +96,19 @@ function readText(){
     processor = createTextProcesser(input);
     processor.read();
     pos = processor.createPos();
-    positions.features.push(pos);
+    if(pos != null){
+        positions.features.push(pos);
+    }
     console.log("Added to positions: " + pos);
-    input.value = '';
-    updateDisplayedJSON();
+    input.value = '';       //Empty text box
+    updateDisplayedJSON();  //Update displayed info
+    updateDisplayedPos();
 }
 
 /** Redirects the user to the website 'geojson.io', where the positions are displayed on a map. */
 function openMap() {
     let webpage = 'http://geojson.io/#data=data:application/json,';
-    let posData = encodeURIComponent(posStr());
+    let posData = encodeURIComponent(JSONstr());
     window.location.href = webpage.concat(posData);
 }
 
@@ -93,9 +128,14 @@ function createTextProcesser(input){
 
         /* Creates a Position based on this processor's current data. */
         createPos: function(){
-            //format numbers into 6 digits after decimal point:
-            this.latitude = this.latitude.toFixed(6);
-            this.longitude = this.longitude.toFixed(6);
+            if(this.longitude < -180 || this.longitude > 180){
+                alert('Number for longitude is out of range (-180, 180)');
+                return;
+            }
+            if(this.latitude < -90 || this.latitude > 90){
+                alert('Number for latitude is out of range (-90, 90)');
+                return;
+            }
             return new Position(this.latitude, this.longitude, this.name);
         },
 
@@ -110,44 +150,58 @@ function createTextProcesser(input){
             return (!isNaN(part) && !isNaN(parseFloat(part)));
         },
 
-        /** Creates a geoJSON position out of the processed text input. */
+        /** Processes the text input, and stores the relevant data in this Text Processor. */
         read: function(){
+            this.text = this.text.toUpperCase();
             let parts = this.getComponents();
             console.log(parts);
-            let interpreter = '';               //Will say have values '', 'N', 'E', 'W' or 'S'.
-            let registeredNumber = undefined;   //To get the order of the coordinates right
-            let registeredNumbers = 0;
+            let interpreter = '';           //Will have values '', 'N', 'E', 'W' or 'S'.
+            let noDirNumber = undefined;    //Number that isn't interpreted to a direction yet
+            let noDirNumbers = 0;           //Number of uninterpreted numbers
+            let latFound = false;
+            let longFound = false;
 
             for(let i = 0; i < parts.length; i++){
+
                 let part = parts[parts.length - 1 - i]; //Go backwards through input
+
+                if(latFound && longFound){
+                    alert("Too much information in the input. \nOnly the two rightmost numbers will be taken into account.");
+                    return; //stop reading
+                }
+
                 switch (part) {
-                    //If part is NEWS, change interpreter and resolve registered number
+                    //If part is NEWS, change interpreter and resolve noDirNumber
                     case 'N':
                         interpreter = 'N';
-                        if(registeredNumbers == 1){
-                            this.longitude = registeredNumber;  //The other number must be longitude
-                            registeredNumbers++;
+                        if(noDirNumbers == 1){
+                            this.longitude = noDirNumber;  //The earlier number must be longitude 
+                            noDirNumbers--;
+                            longFound = true;   
                         }
                         break;
                     case 'E':
                         interpreter = 'E';
-                        if(registeredNumbers == 1){
-                            this.latitude = registeredNumber;  //The other number must be latitude
-                            registeredNumbers++;
+                        if(noDirNumbers == 1){
+                            this.latitude = noDirNumber;  //The earlier number must be latitude
+                            noDirNumbers--;
+                            latFound = true;
                         }
                         break;
                     case 'W':
                         interpreter = 'W';
-                        if(registeredNumbers == 1){
-                            this.latitude = registeredNumber;  //The other number must be latitude
-                            registeredNumbers++;
+                        if(noDirNumbers == 1){
+                            this.latitude = noDirNumber;  //The earlier number must be latitude
+                            noDirNumbers--;
+                            latFound = true;
                         }
                         break;
                     case 'S':
                         interpreter = 'S';
-                        if(registeredNumbers == 1){
-                            this.longitude = registeredNumber;  //The other number must be longitude
-                            registeredNumbers++;
+                        if(noDirNumbers == 1){
+                            this.longitude = noDirNumber;  //The earlier number must be longitude
+                            noDirNumbers--;
+                            longFound = true;
                         }
                         break;
                     default:
@@ -158,41 +212,69 @@ function createTextProcesser(input){
                             part = parseFloat(part);
                             switch (interpreter) {
                                 case 'N':
+                                    if(latFound) {alert("Input defines more than one latitude.\nOnly the leftmost will be taken into account.")}
                                     this.latitude = part;
+                                    latFound = true;
                                     interpreter = '';
                                     break;
                                 case 'E':
+                                    if(longFound) {alert("Input defines more than one longitude.\nOnly the leftmost will be taken into account.")}
                                     this.longitude = part;
+                                    longFound = true;
                                     interpreter = '';
                                     break;
                                 case 'W':
+                                    if(longFound) {alert("Input defines more than one longitude.\nOnly the leftmost will be taken into account.")}
                                     this.longitude = -part;
+                                    longFound = true;
                                     interpreter = '';
                                     break;
                                 case 'S':
+                                    if(latFound) {alert("Input defines more than one latitude.\nOnly the leftmost will be taken into account.")}
                                     this.latitude = -part;
+                                    latFound = true;
                                     interpreter = '';
                                     break;
                                 default:
                                     //interpreter is empty
-                                    //If we already have registered a number
-                                    if(registeredNumbers == 1){
-                                        this.longitude = registeredNumber;
+                                    //If we already have found a number, we know the direction
+                                    if(latFound){
+                                        this.longitude = part;
+                                        longFound = true;
+                                    }
+                                    else if(longFound){
                                         this.latitude = part;
-                                        //All numbers registered after this will be ignored:
-                                        registeredNumbers++;
-                                    }else if(registeredNumbers == 0){
-                                        registeredNumber = part;                                        
-                                        registeredNumbers++;
+                                        latFound = true;
+                                    }
+                                    else if(noDirNumbers == 1){
+                                        //With two no-direction numbers, the longitude is the rightmost
+                                        this.longitude = noDirNumber;
+                                        this.latitude = part;
+                                        latFound = true;
+                                        longFound = true;
+                                        noDirNumbers--;
+                                    }
+                                    else if(noDirNumbers == 0){
+                                        //We don't know the direction of this number yet
+                                        noDirNumber = part;                                        
+                                        noDirNumbers++;
                                     }
                                     break;
                             }
                         }
                         else{   //Part is not NEWS, nor number.
-                            this.name = part;   //Assume this is the name
+                            if(interpreter != ''){
+                                alert("The directional markers 'N', 'E', 'W' and 'S' need numbers in front of them.");
+                            }
+                            //In case name is more than one word:
+                            this.name = part + ' ' + this.name;   //Add this to start of name
                         }
                         break;
                 }
+            }
+
+            if(!(latFound && longFound)){
+                alert("Input was missing latitude or longitude. In its place, 0 will be inserted.");
             }
         }
     }
