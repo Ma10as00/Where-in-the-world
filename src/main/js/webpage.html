@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Testing JS</title>
+
+</head>
+<body>
+    <h1>Where in the world is CS?</h1>
+    <p> Write some coordinates in the texbox below, and they will be formatted into a geoJSON string.
+        <p></p> The expectation is that each line should consist of a coordinate (in some form), optionally followed by a label.
+        <p></p> For instance:  45.9 S, 170.5 E Dunedin
+        <p></p> To display your locations on a map, click on 'Go to map'.
+    </p>
+    <p></p>
+    <input type="text" id="textInput">
+    <button onclick="readText()">OK</button>
+    <p></p>
+    <p id = "geoJSON"></p>
+    <p></p>
+    <button onclick="openMap()">Go to map</button>
+    <p></p>
+    <button onclick="createFile()">Export to .txt file</button>
+    <p></p>
+    <button onclick="window.print()">Print this page</button>
+    <script src="script.js"> </script>
+</body>
+</html>

@@ -57,13 +57,16 @@ input.addEventListener('keydown', function(event){
 })
 
 /** Creates an instance of a TextProcessor-object.
- * This object contains a bunch of usefull methods for processing text input.
+ *  This object contains a bunch of usefull methods for processing text input
+ *  into valid geoJSON data.
  */
 function createTextProcesser(input){
     return{
+        /** The string that the user inserted in a textbox */
         text: input.value,
         latitude: 0,
         longitude: 0,
+        /** The place name. An empty string by default */
         name: '',
         /** Checks if the input text is entirely numeric.*/
         isNumeric: function(){
@@ -95,6 +98,19 @@ function createTextProcesser(input){
             });
             return numbers;
         },
+        
+        //No knowledge of NEWS-terms yet
+        north: "",
+        east: "",
+        west: "",
+        south: "",
+        /** map to keep track of phrases with 'N','E','W' or 'S', if there is any */
+        newsMap: new Map([
+            ['N', north],
+            ['E', east],
+            ['W', west],
+            ['S', south]
+        ]),
 
         /** Creates a geoJSON position out of the processed text input. */
         createPos: function(){
@@ -108,6 +124,17 @@ function createTextProcesser(input){
                     console.error("Too many numbers in this string. Can't create Position.");
                 }
             }else{
+                if(this.containsNEWS){
+                    let lastNEWS = -1;
+                    for (let i = 0; i< this.text.length; i++){
+                        let char = this.text[i];
+                        if (char == 'N' || char == 'E' || char == 'W' || char == 'S'){
+                            newsMap.set(char, this.text.substring(lastNEWS + 1, i)); //Changes the appropriate string (north, east, west or south)
+                            lastNEWS = i;
+                        }
+                    }
+                    
+                }
                 console.error("Can't create Position because text is not numeric");
             }
         },
