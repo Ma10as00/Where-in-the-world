@@ -93,6 +93,22 @@ function clearData(){
     updateDisplayedPos();
 }
 
+/** This removes the last added position. */
+function undo(){
+    //Remove last position
+    positions.features = positions.features.slice(0,-1);
+    //Update displayed data
+    updateDisplayedJSON();
+    updateDisplayedPos();
+}
+
+/** Redirects the user to the website 'geojson.io', where the positions are displayed on a map. */
+function openMap() {
+    let webpage = 'http://geojson.io/#data=data:application/json,';
+    let posData = encodeURIComponent(JSONstr());
+    window.location.href = webpage.concat(posData);
+}
+
 /** The function that processes the text input from the user.
  *  This is called if the user presses the 'OK'-button on the screen,
  *  or press 'enter' on their keyboard.
@@ -108,13 +124,6 @@ function readText(){
     input.value = '';       //Empty text box
     updateDisplayedJSON();  //Update displayed info
     updateDisplayedPos();
-}
-
-/** Redirects the user to the website 'geojson.io', where the positions are displayed on a map. */
-function openMap() {
-    let webpage = 'http://geojson.io/#data=data:application/json,';
-    let posData = encodeURIComponent(JSONstr());
-    window.location.href = webpage.concat(posData);
 }
 
 /** Creates an instance of a TextProcessor-object.
@@ -256,7 +265,11 @@ console.log(parts);
                             //Update sexagesimal number
                             switch (numInterpreter) {
                                 case '°':
-                                    part = part + sexagesimal;
+                                    if(part < 0){
+                                        part -= sexagesimal;
+                                    }else{
+                                        part += sexagesimal;
+                                    }
                                     sexagesimal = 0;
                                     isReadingSexagesimal = false;
                                     numInterpreter = '';

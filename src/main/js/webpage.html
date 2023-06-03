@@ -10,21 +10,25 @@
 <body>
     <h1>Where in the world is CS?</h1>
     <p> Write some coordinates in the texbox below, and they will be formatted into a geoJSON string.
-        <p></p> The expectation is that each line should consist of a coordinate (in some form), optionally followed by a label.
         <p></p> Examples on valid input:
         <blockquote> <pre>
             <p></p> 45.9 S, 170.5 E Dunedin
             <p></p> 40° 26.767' N 79° 58.933' W
+            <p></p> 00010.° 054e0' 12.6000", -63.4457 S Hell
         </pre> </blockquote>
-        <p></p> To display your locations on a map, click on 'Go to map'.
-        <p></p> To export collected geoJSON data to a .txt file, click 'Export'.
-        <p></p> To clear all geoJSON data, and start over, click 'Clear'.
+        Explanations of the buttons:
+        <blockquote>
+            <p></p> 'Go to map': Click to display your locations on a map.
+            <p></p> 'Export': Click to export the geoJSON data to a .txt file.
+            <p></p> 'Undo': Click to remove the last position from the dataset.
+            <p></p> 'Clear': Click to clear all geoJSON data, and start over.
+        </blockquote>
     </p>
-    <p></p>
-    <input type="text" id="textInput">
+    <input type="text" id="textInput" size="40" placeholder="            --- Write your coordinates here ---">
     <button onclick="readText()">OK</button>
     <button onclick="openMap()">Go to map</button>
     <button onclick="createFile()">Export</button>
+    <button onclick="undo()">Undo</button>
     <button onclick="clearData()">Clear</button>
     <p></p>
     <p id = "positions"></p>
