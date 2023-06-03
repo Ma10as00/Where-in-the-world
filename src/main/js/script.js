@@ -70,13 +70,18 @@ input.addEventListener('keydown', function(event){
 const displayedJSON = document.getElementById("geoJSON");
 updateDisplayedJSON();  //Initialize the display of geoJSON data
 const displayedPositions = document.getElementById("positions");
+updateDisplayedPos();   //Initialize the display of positions
 
 function updateDisplayedJSON(){
     displayedJSON.innerHTML = '<pre>' + 'geoJSON data:\n' + JSONstr() + '</pre>';    //The <pre> is to keep the formatting nice on the html-page
 }
 
 function updateDisplayedPos(){
-    displayedPositions.innerHTML = '<pre>' + posStr() + '</pre>';    //The <pre> is to keep the formatting nice on the html-page
+    if(posStr() == ''){
+        displayedPositions.innerHTML = '<pre>' + 'Added positions: none' +  '</pre>';
+    }else{
+        displayedPositions.innerHTML = '<pre>' + 'Added positions:\n' + posStr() +  '</pre>';    //The <pre> is to keep the formatting nice on the html-page
+    }
 }
 
 /* Clears all data in positions and updates the graphics accordingly. */
@@ -139,10 +144,32 @@ function createTextProcesser(input){
             return new Position(this.latitude, this.longitude, this.name);
         },
 
-        /** Splits the text-input by the separator ',' and returns the components in an array */
+        /** Splits the text-input by the separators ',' and ' ' and returns the components in an array */
         getComponents: function(){
-            const separators = /[, ]+/;  //Seperate by commas and spaces
-            return this.text.split(separators); 
+            let components = []
+            //Split by commas and spaces
+            const separators = /[, ]+/;  
+            const parts = this.text.split(separators);
+            //Split sexagesimal signs from their number
+            for (let i = 0; i < parts.length; i++){
+                const isSexagesimalData = parts[i].match(/[\d.]+[°'"]/g);
+                //Checks if seconds is given by two single quotation marks instead of one double quotation mark:
+                const toSingles = parts[i].match(/[\d.]+[']{2}/g);
+                if(toSingles){
+                    const number = parts[i].substring(0,parts[i].length - 2);
+                    const marker = '"';
+                    components.push(number);
+                    components.push(marker);
+                }else if(isSexagesimalData){
+                    const number = parts[i].substring(0,parts[i].length - 1);
+                    const marker = parts[i].substring(parts[i].length - 1);
+                    components.push(number);
+                    components.push(marker);
+                }else{
+                    components.push(parts[i]);
+                }
+            }
+            return components; 
         },
 
         /** Checks if the input text is entirely numeric, except for spaces ' ' and commas ','.*/
@@ -154,12 +181,16 @@ function createTextProcesser(input){
         read: function(){
             this.text = this.text.toUpperCase();
             let parts = this.getComponents();
-            console.log(parts);
-            let interpreter = '';           //Will have values '', 'N', 'E', 'W' or 'S'.
+console.log(parts);
+            let dirInterpreter = '';        //Will have values '', 'N', 'E', 'W' or 'S'.
             let noDirNumber = undefined;    //Number that isn't interpreted to a direction yet
             let noDirNumbers = 0;           //Number of uninterpreted numbers
             let latFound = false;
             let longFound = false;
+
+            let numInterpreter = '';        //Will have values °, ' or ".
+            let sexagesimal = 0;            //Building coordinate based on sexagesimal input
+            let isReadingSexagesimal = false;
 
             for(let i = 0; i < parts.length; i++){
 
@@ -173,7 +204,7 @@ function createTextProcesser(input){
                 switch (part) {
                     //If part is NEWS, change interpreter and resolve noDirNumber
                     case 'N':
-                        interpreter = 'N';
+                        dirInterpreter = 'N';
                         if(noDirNumbers == 1){
                             this.longitude = noDirNumber;  //The earlier number must be longitude 
                             noDirNumbers--;
@@ -181,7 +212,7 @@ function createTextProcesser(input){
                         }
                         break;
                     case 'E':
-                        interpreter = 'E';
+                        dirInterpreter = 'E';
                         if(noDirNumbers == 1){
                             this.latitude = noDirNumber;  //The earlier number must be latitude
                             noDirNumbers--;
@@ -189,7 +220,7 @@ function createTextProcesser(input){
                         }
                         break;
                     case 'W':
-                        interpreter = 'W';
+                        dirInterpreter = 'W';
                         if(noDirNumbers == 1){
                             this.latitude = noDirNumber;  //The earlier number must be latitude
                             noDirNumbers--;
@@ -197,12 +228,24 @@ function createTextProcesser(input){
                         }
                         break;
                     case 'S':
-                        interpreter = 'S';
+                        dirInterpreter = 'S';
                         if(noDirNumbers == 1){
                             this.longitude = noDirNumber;  //The earlier number must be longitude
                             noDirNumbers--;
                             longFound = true;
                         }
+                        break;
+                    case '°':
+                        numInterpreter = '°';
+                        isReadingSexagesimal = true;
+                        break;
+                    case "'":
+                        numInterpreter = "'";
+                        isReadingSexagesimal = true;
+                        break;
+                    case '"':
+                        numInterpreter = '"';
+                        isReadingSexagesimal = true;
                         break;
                     default:
                         //Part was not NEWS
@@ -210,60 +253,97 @@ function createTextProcesser(input){
                         if(this.isNumeric(part)){
                             //parse part as a number
                             part = parseFloat(part);
-                            switch (interpreter) {
-                                case 'N':
-                                    if(latFound) {alert("Input defines more than one latitude.\nOnly the leftmost will be taken into account.")}
-                                    this.latitude = part;
-                                    latFound = true;
-                                    interpreter = '';
+                            //Update sexagesimal number
+                            switch (numInterpreter) {
+                                case '°':
+                                    part = part + sexagesimal;
+                                    sexagesimal = 0;
+                                    isReadingSexagesimal = false;
+                                    numInterpreter = '';
                                     break;
-                                case 'E':
-                                    if(longFound) {alert("Input defines more than one longitude.\nOnly the leftmost will be taken into account.")}
-                                    this.longitude = part;
-                                    longFound = true;
-                                    interpreter = '';
+                                case "'":
+                                    sexagesimal += part/60;
+                                    isReadingSexagesimal = true;
+                                    numInterpreter = '';
                                     break;
-                                case 'W':
-                                    if(longFound) {alert("Input defines more than one longitude.\nOnly the leftmost will be taken into account.")}
-                                    this.longitude = -part;
-                                    longFound = true;
-                                    interpreter = '';
-                                    break;
-                                case 'S':
-                                    if(latFound) {alert("Input defines more than one latitude.\nOnly the leftmost will be taken into account.")}
-                                    this.latitude = -part;
-                                    latFound = true;
-                                    interpreter = '';
+                                case '"':
+                                    sexagesimal += part/3600;
+                                    isReadingSexagesimal = true;
+                                    numInterpreter = '';
                                     break;
                                 default:
-                                    //interpreter is empty
-                                    //If we already have found a number, we know the direction
-                                    if(latFound){
-                                        this.longitude = part;
-                                        longFound = true;
-                                    }
-                                    else if(longFound){
-                                        this.latitude = part;
-                                        latFound = true;
-                                    }
-                                    else if(noDirNumbers == 1){
-                                        //With two no-direction numbers, the longitude is the rightmost
-                                        this.longitude = noDirNumber;
-                                        this.latitude = part;
-                                        latFound = true;
-                                        longFound = true;
-                                        noDirNumbers--;
-                                    }
-                                    else if(noDirNumbers == 0){
-                                        //We don't know the direction of this number yet
-                                        noDirNumber = part;                                        
-                                        noDirNumbers++;
-                                    }
                                     break;
                             }
+
+                            //Only add coordinate if the whole coordinate is read:
+                            if(!isReadingSexagesimal){
+                                switch (dirInterpreter) {
+                                    case 'N':
+                                        if(latFound) {alert("Input defines more than one latitude.\nOnly the leftmost will be taken into account.")}
+                                        //Set new coordinate
+                                        this.latitude = part;
+                                        latFound = true;
+                                        //Reset interpreters
+                                        dirInterpreter = '';
+                                        numInterpreter = '';
+                                        break;
+                                    case 'E':
+                                        if(longFound) {alert("Input defines more than one longitude.\nOnly the leftmost will be taken into account.")}
+                                        //Set new coordinate
+                                        this.longitude = part;
+                                        longFound = true;
+                                        //Reset interpreters
+                                        dirInterpreter = '';
+                                        numInterpreter = '';
+                                        break;
+                                    case 'W':
+                                        if(longFound) {alert("Input defines more than one longitude.\nOnly the leftmost will be taken into account.")}
+                                        //Set new coordinate
+                                        this.longitude = -part;
+                                        longFound = true;
+                                        //Reset interpreters
+                                        dirInterpreter = '';
+                                        numInterpreter = '';
+                                        break;
+                                    case 'S':
+                                        if(latFound) {alert("Input defines more than one latitude.\nOnly the leftmost will be taken into account.")}
+                                        //Set new coordinate
+                                        this.latitude = -part;
+                                        latFound = true;
+                                        //Reset interpreters
+                                        dirInterpreter = '';
+                                        numInterpreter = '';
+                                        break;
+                                    default:
+                                        //dirInterpreter is empty
+                                        //If we already have found a number, we know the direction
+                                        if(latFound){
+                                            this.longitude = part;
+                                            longFound = true;
+                                        }
+                                        else if(longFound){
+                                            this.latitude = part;
+                                            latFound = true;
+                                        }
+                                        else if(noDirNumbers == 1){
+                                            //With two no-direction numbers, the longitude is the rightmost
+                                            this.longitude = noDirNumber;
+                                            this.latitude = part;
+                                            latFound = true;
+                                            longFound = true;
+                                            noDirNumbers--;
+                                        }
+                                        else if(noDirNumbers == 0){
+                                            //We don't know the direction of this number yet
+                                            noDirNumber = part;                                        
+                                            noDirNumbers++;
+                                        }
+                                        break;
+                                }
+                            }
                         }
-                        else{   //Part is not NEWS, nor number.
-                            if(interpreter != ''){
+                        else{   //Part is neither NEWS, nor number.
+                            if(dirInterpreter != ''){
                                 alert("The directional markers 'N', 'E', 'W' and 'S' need numbers in front of them.");
                             }
                             //In case name is more than one word:
