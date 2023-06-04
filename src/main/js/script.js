@@ -190,7 +190,6 @@ function createTextProcesser(input){
         read: function(){
             this.text = this.text.toUpperCase();
             let parts = this.getComponents();
-console.log(parts);
             let dirInterpreter = '';        //Will have values '', 'N', 'E', 'W' or 'S'.
             let noDirNumber = undefined;    //Number that isn't interpreted to a direction yet
             let noDirNumbers = 0;           //Number of uninterpreted numbers
