@@ -2,9 +2,11 @@
 
 
 
-## Report
+## Program
 
 See full report in report.pdf
+
+This program takes coordinates as input, and helps you visualize these coordinates on a map.
 
 ## Usage
 
