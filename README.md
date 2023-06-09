@@ -12,4 +12,6 @@ I use the extension "Live Server" to open my html-page in a web browser.
 
 ![Extension that enables you to open HTML files from VSCode](live_server_extension.png)
 
+### Demo
+
 ![Video demonstration of how to use the program](video_demonstration.mp4)
